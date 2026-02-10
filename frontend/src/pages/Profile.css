@@ -1,0 +1,146 @@
+.profile-page {
+  padding: 2rem 0;
+  min-height: calc(100vh - 80px);
+}
+
+.profile-container {
+  max-width: 800px;
+  margin: 0 auto;
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.profile-container h1 {
+  margin-bottom: 1.5rem;
+  color: #1a1a2e;
+  border-bottom: 2px solid #4a9eff;
+  padding-bottom: 0.5rem;
+}
+
+.success-message {
+  background-color: #e0ffe0;
+  color: #27ae60;
+  padding: 1rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+
+.error-message {
+  background-color: #ffe0e0;
+  color: #c0392b;
+  padding: 1rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+
+.profile-info {
+  background-color: #f8f9fa;
+  padding: 1rem;
+  border-radius: 4px;
+  margin-bottom: 2rem;
+}
+
+.profile-info p {
+  margin: 0.5rem 0;
+  color: #666;
+}
+
+.profile-info strong {
+  color: #1a1a2e;
+}
+
+.profile-form h2,
+.profile-form h3 {
+  margin: 1.5rem 0 1rem 0;
+  color: #1a1a2e;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #333;
+  font-weight: 500;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #4a9eff;
+}
+
+.form-group small {
+  display: block;
+  margin-top: 0.25rem;
+  color: #666;
+  font-size: 0.85rem;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.btn-update {
+  width: 100%;
+  background-color: #4a9eff;
+  color: white;
+  padding: 0.75rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 1rem;
+  transition: background-color 0.3s;
+}
+
+.btn-update:hover {
+  background-color: #357abd;
+}
+
+.danger-zone {
+  margin-top: 3rem;
+  padding: 1.5rem;
+  border: 2px solid #e74c3c;
+  border-radius: 8px;
+  background-color: #ffe0e0;
+}
+
+.danger-zone h3 {
+  margin: 0 0 1rem 0;
+  color: #c0392b;
+}
+
+.danger-zone p {
+  margin-bottom: 1rem;
+  color: #666;
+}
+
+.btn-delete-account {
+  background-color: #e74c3c;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 4px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.btn-delete-account:hover {
+  background-color: #c0392b;
+}

@@ -1,0 +1,289 @@
+.delivery-dashboard {
+  padding: 2rem 0;
+}
+
+.delivery-dashboard h1 {
+  margin-bottom: 2rem;
+  color: #1a1a2e;
+}
+
+.message {
+  background-color: #e0ffe0;
+  color: #27ae60;
+  padding: 1rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.no-orders {
+  text-align: center;
+  padding: 4rem 2rem;
+  background: white;
+  border-radius: 8px;
+  color: #666;
+}
+
+.delivery-orders {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.delivery-order-card {
+  background: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.delivery-order-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #f5f5f5;
+}
+
+.delivery-order-header h3 {
+  margin: 0;
+  color: #1a1a2e;
+}
+
+.delivery-status {
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  color: white;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.delivery-order-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.info-row {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 1rem;
+  color: #666;
+}
+
+.info-row strong {
+  color: #1a1a2e;
+}
+
+.delivery-actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.btn-out-delivery,
+.btn-location,
+.btn-delivered {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 4px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.btn-out-delivery {
+  background-color: #9b59b6;
+  color: white;
+}
+
+.btn-out-delivery:hover {
+  background-color: #8e44ad;
+}
+
+.btn-location {
+  background-color: #3498db;
+  color: white;
+}
+
+.btn-location:hover:not(:disabled) {
+  background-color: #2980b9;
+}
+
+.btn-location:disabled {
+  background-color: #95a5a6;
+  cursor: not-allowed;
+}
+
+.btn-delivered {
+  background-color: #27ae60;
+  color: white;
+}
+
+.btn-delivered:hover {
+  background-color: #229954;
+}
+
+
+.payment-highlight {
+  background-color: #fff3cd;
+  padding: 0.5rem;
+  border-radius: 4px;
+  margin: 0.5rem 0;
+}
+
+.cod-badge {
+  background-color: #ff9800;
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-weight: bold;
+  margin-left: 0.5rem;
+}
+
+.prepaid-badge {
+  background-color: #4caf50;
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-weight: bold;
+  margin-left: 0.5rem;
+}
+
+.amount-highlight {
+  color: #27ae60;
+  font-weight: bold;
+  font-size: 1.2rem;
+  margin-left: 0.5rem;
+}
+
+.delivered-info {
+  background-color: #e8f5e9;
+  padding: 1rem;
+  border-radius: 4px;
+  margin-top: 1rem;
+}
+
+.delivered-info p {
+  margin: 0.25rem 0;
+  color: #2e7d32;
+  font-weight: 600;
+}
+
+.cash-collected {
+  color: #ff6f00;
+  font-weight: bold;
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  max-width: 500px;
+  width: 90%;
+}
+
+.modal-content h2 {
+  margin-bottom: 1.5rem;
+  color: #1a1a2e;
+  text-align: center;
+}
+
+.otp-info {
+  margin-bottom: 1.5rem;
+}
+
+.otp-display-box {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  text-align: center;
+  margin: 1rem 0;
+}
+
+.otp-display-box h3 {
+  font-size: 2.5rem;
+  letter-spacing: 8px;
+  margin: 0.5rem 0;
+  font-family: 'Courier New', monospace;
+}
+
+.otp-instruction {
+  font-weight: bold;
+  color: #e74c3c;
+  margin-top: 1rem;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid #ddd;
+  border-radius: 4px;
+  font-size: 1.5rem;
+  text-align: center;
+  letter-spacing: 5px;
+  font-family: 'Courier New', monospace;
+}
+
+.modal-buttons {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.btn-verify {
+  flex: 1;
+  background-color: #27ae60;
+  color: white;
+  padding: 0.75rem;
+  border: none;
+  border-radius: 4px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-verify:hover {
+  background-color: #229954;
+}
+
+.btn-cancel {
+  flex: 1;
+  background-color: #95a5a6;
+  color: white;
+  padding: 0.75rem;
+  border: none;
+  border-radius: 4px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-cancel:hover {
+  background-color: #7f8c8d;
+}
+

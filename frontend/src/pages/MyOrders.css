@@ -1,0 +1,131 @@
+.my-orders {
+  padding: 2rem 0;
+}
+
+.my-orders h1 {
+  margin-bottom: 2rem;
+  color: #1a1a2e;
+}
+
+.no-orders {
+  text-align: center;
+  padding: 4rem 2rem;
+}
+
+.no-orders h2 {
+  color: #666;
+  margin-bottom: 1rem;
+}
+
+.no-orders p {
+  color: #999;
+  margin-bottom: 2rem;
+}
+
+.orders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.order-card {
+  background: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.order-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.order-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #eee;
+}
+
+.order-header h3 {
+  margin: 0 0 0.5rem 0;
+  color: #1a1a2e;
+  font-size: 1.2rem;
+}
+
+.order-date {
+  color: #666;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.order-status {
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  color: white;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.order-items {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.order-item-preview {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #f8f9fa;
+  padding: 0.5rem;
+  border-radius: 4px;
+}
+
+.order-item-preview img {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.order-item-preview span {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.more-items {
+  color: #4a9eff;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.order-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 1rem;
+  border-top: 1px solid #eee;
+}
+
+.order-total {
+  font-size: 1.1rem;
+  color: #1a1a2e;
+}
+
+.order-total strong {
+  color: #27ae60;
+  font-size: 1.3rem;
+}
+
+.order-payment {
+  color: #666;
+  font-size: 0.9rem;
+}
