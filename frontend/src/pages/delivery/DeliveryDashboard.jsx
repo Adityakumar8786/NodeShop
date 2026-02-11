@@ -39,9 +39,6 @@ const DeliveryDashboard = () => {
   };
 
   const handleDeliver = async (order) => {
-    console.log('🚀 Starting deliver for order:', order._id); // NEW LOG
-    console.log('💳 Order payment method:', order.paymentMethod); // NEW LOG
-
     setCurrentOrder(order);
     
     if (order.paymentMethod === 'COD') {
@@ -64,42 +61,31 @@ const DeliveryDashboard = () => {
         setTimeout(() => setMessage(''), 3000);
       }
     } else {
-      // Generate OTP for Prepaid
-      try {
-        const response = await api.put(`/orders/${order._id}/deliver`, {});
-        console.log('📡 Deliver API response:', response.data); // NEW LOG
-        
-        if (response.data.requiresOTP) {
-          setGeneratedOTP(response.data.mockOTP);
-          setShowOTPModal(true);
-        }
-      } catch (error) {
-        console.error('❌ Prepaid deliver error:', error); // NEW LOG
-        setMessage(error.response?.data?.message || 'Failed to generate OTP');
-        setTimeout(() => setMessage(''), 3000);
-      }
+      // For Prepaid, show modal to enter OTP (generation happens on backend if needed)
+      setShowOTPModal(true);
     }
   };
 
   const handleOTPSubmit = async (e) => {
     e.preventDefault();
-    console.log('🔑 Submitting OTP:', customerOTP); // NEW LOG
     
     try {
-      await api.put(`/orders/${currentOrder._id}/deliver`, { 
+      const response = await api.put(`/orders/${currentOrder._id}/deliver`, { 
         deliveryOTP: customerOTP 
       });
       
       setMessage('✅ OTP Verified! Order delivered successfully!');
       setShowOTPModal(false);
       setCustomerOTP('');
-      setGeneratedOTP('');
       setCurrentOrder(null);
       fetchAssignedOrders();
       setTimeout(() => setMessage(''), 3000);
     } catch (error) {
-      console.error('❌ OTP submit error:', error); // NEW LOG
-      setMessage(error.response?.data?.message || 'Invalid OTP');
+      if (error.response?.status === 400 && error.response.data.message === 'Invalid OTP. Please ask customer for correct OTP.') {
+        setMessage('Invalid OTP. Try again.');
+      } else {
+        setMessage(error.response?.data?.message || 'Delivery failed');
+      }
       setTimeout(() => setMessage(''), 3000);
     }
   };
@@ -255,10 +241,6 @@ const DeliveryDashboard = () => {
             <h2>📱 Customer OTP Verification</h2>
             <div className="otp-info">
               <p>OTP has been sent to customer's phone.</p>
-              <div className="otp-display-box">
-                <p>Demo OTP (In production, customer receives via SMS):</p>
-                <h3>{generatedOTP}</h3>
-              </div>
               <p className="otp-instruction">Ask the customer for their 6-digit OTP:</p>
             </div>
             <form onSubmit={handleOTPSubmit}>
