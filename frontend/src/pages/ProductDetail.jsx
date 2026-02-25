@@ -9,7 +9,6 @@ const ProductDetail = () => {
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
   
-  const [product, setProduct] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
