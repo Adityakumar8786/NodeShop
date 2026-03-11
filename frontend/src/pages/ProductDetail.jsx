@@ -6,31 +6,45 @@ import './ProductDetail.css';
 
 const ProductDetail = () => {
   const { id } = useParams();
-  const { user } = useContext(AuthContext);
   const navigate = useNavigate();
-  
-  const [reviews, setReviews] = useState([]);
-  const [quantity, setQuantity] = useState(1);
+  const { user } = useContext(AuthContext);
+  const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [quantity, setQuantity] = useState(1);
   const [message, setMessage] = useState('');
-
+  const [reviews, setReviews] = useState([]);
   const [aiQuestion, setAiQuestion] = useState('');
   const [aiAnswer, setAiAnswer] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
 
   useEffect(() => {
-    fetchProduct();
+    if (id) {
+      fetchProduct();
+      fetchReviews();
+    }
   }, [id]);
 
   const fetchProduct = async () => {
     try {
+      setLoading(true);
+      setError('');
       const response = await api.get(`/products/${id}`);
-      setProduct(response.data.product);
-      setReviews(response.data.reviews);
+      setProduct(response.data);
     } catch (error) {
       console.error('Error fetching product:', error);
+      setError('Failed to load product');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchReviews = async () => {
+    try {
+      const response = await api.get(`/reviews/product/${id}`);
+      setReviews(response.data);
+    } catch (error) {
+      console.error('Error fetching reviews:', error);
     }
   };
 
@@ -47,8 +61,11 @@ const ProductDetail = () => {
     }
 
     try {
-      await api.post('/cart/add', { productId: id, quantity });
-      setMessage('Added to cart successfully!');
+      await api.post('/cart/add', {
+        productId: id,
+        quantity,
+      });
+      setMessage('✅ Added to cart!');
       setTimeout(() => setMessage(''), 3000);
     } catch (error) {
       setMessage(error.response?.data?.message || 'Failed to add to cart');
@@ -63,23 +80,29 @@ const ProductDetail = () => {
     }
 
     if (user.role !== 'Customer') {
-      setMessage('Only customers can purchase products');
+      setMessage('Only customers can purchase items');
       setTimeout(() => setMessage(''), 3000);
       return;
     }
 
     try {
-      await api.post('/cart/add', { productId: id, quantity });
+      await api.post('/cart/add', {
+        productId: id,
+        quantity,
+      });
       navigate('/cart');
     } catch (error) {
-      setMessage(error.response?.data?.message || 'Failed to process');
+      setMessage(error.response?.data?.message || 'Failed to add to cart');
       setTimeout(() => setMessage(''), 3000);
     }
   };
 
-  const handleAskQuestion = async (e) => {
+  const handleAskAI = async (e) => {
     e.preventDefault();
-    if (!aiQuestion.trim()) return;
+    
+    if (!aiQuestion.trim()) {
+      return;
+    }
 
     setAiLoading(true);
     setAiAnswer('');
@@ -91,7 +114,7 @@ const ProductDetail = () => {
       });
       setAiAnswer(response.data.answer);
     } catch (error) {
-      setAiAnswer(error.response?.data?.message || 'Sorry, I could not get an answer. Please try again.');
+      setAiAnswer('Sorry, AI service is currently unavailable.');
     } finally {
       setAiLoading(false);
     }
@@ -105,70 +128,94 @@ const ProductDetail = () => {
     return <div className="loading">Loading product...</div>;
   }
 
-  if (!product) {
-    return <div className="error">Product not found</div>;
+  if (error || !product) {
+    return (
+      <div className="error-page">
+        <h2>Product Not Found</h2>
+        <p>{error || 'This product does not exist'}</p>
+        <button onClick={() => navigate('/')} className="btn-back">
+          ← Back to Home
+        </button>
+      </div>
+    );
   }
 
-  const isCustomer = user && user.role === 'Customer';
-
   return (
-    <div className="product-detail">
-      {message && <div className="message success">{message}</div>}
+    <div className="product-detail-page">
+      {message && <div className="message">{message}</div>}
 
       <div className="product-detail-container">
-        <div className="product-detail-image">
-          <img src={product.image} alt={product.name} />
+        <div className="product-image-section">
+          <img src={product.image} alt={product.name} onError={(e) => {
+            e.target.src = 'https://via.placeholder.com/500x500?text=No+Image';
+          }} />
         </div>
 
-        <div className="product-detail-info">
+        <div className="product-info-section">
           <h1>{product.name}</h1>
           
-          <div className="product-detail-rating">
-            ⭐ {safeToFixed(product.ratings?.average || 0, 1)} | {product.ratings?.count || 0} reviews
+          <div className="product-rating">
+            <span className="rating-stars">
+              {'⭐'.repeat(Math.round(product.ratings?.average || 0))}
+            </span>
+            <span className="rating-text">
+              {(product.ratings?.average || 0).toFixed(1)} ({product.ratings?.count || 0} reviews)
+            </span>
           </div>
 
-          <div className="product-detail-price">
-            <span className="final-price">₹{safeToFixed(product.finalPrice || product.price)}</span>
-            {product.discount > 0 && (
+          <div className="product-price">
+            {product.discount > 0 ? (
               <>
+                <span className="final-price">₹{safeToFixed(product.finalPrice)}</span>
                 <span className="original-price">₹{safeToFixed(product.price)}</span>
                 <span className="discount-badge">{product.discount}% OFF</span>
               </>
-            )}
-          </div>
-
-          <div className="product-detail-stock">
-            {product.stock > 0 ? (
-              <span className="in-stock">In Stock ({product.stock} available)</span>
             ) : (
-              <span className="out-of-stock">Out of Stock</span>
+              <span className="final-price">₹{safeToFixed(product.price)}</span>
             )}
           </div>
 
-          <div className="product-detail-category">
+          <div className="product-category">
             <strong>Category:</strong> {product.category?.name || 'N/A'}
           </div>
 
-          <div className="product-detail-description">
+          <div className="product-stock">
+            <strong>Stock:</strong> 
+            {product.stock > 0 ? (
+              <span className="in-stock"> {product.stock} units available</span>
+            ) : (
+              <span className="out-of-stock"> Out of Stock</span>
+            )}
+          </div>
+
+          <div className="product-description">
             <h3>Description</h3>
             <p>{product.description}</p>
           </div>
 
-          {isCustomer && product.stock > 0 && (
-            <div className="product-detail-actions">
+          {user && user.role === 'Customer' && product.stock > 0 && (
+            <div className="product-actions">
               <div className="quantity-selector">
                 <label>Quantity:</label>
-                <input
-                  type="number"
-                  min="1"
-                  max={product.stock}
-                  value={quantity}
-                  onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
-                />
+                <div className="quantity-controls">
+                  <button
+                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    disabled={quantity <= 1}
+                  >
+                    -
+                  </button>
+                  <span>{quantity}</span>
+                  <button
+                    onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
+                    disabled={quantity >= product.stock}
+                  >
+                    +
+                  </button>
+                </div>
               </div>
 
               <div className="action-buttons">
-                <button onClick={handleAddToCart} className="btn-add-cart">
+                <button onClick={handleAddToCart} className="btn-add-to-cart">
                   🛒 Add to Cart
                 </button>
                 <button onClick={handleBuyNow} className="btn-buy-now">
@@ -177,34 +224,27 @@ const ProductDetail = () => {
               </div>
             </div>
           )}
-
-          {!isCustomer && user && (
-            <div className="role-message">
-              <p>⚠️ Only customers can purchase products</p>
-            </div>
-          )}
         </div>
       </div>
 
-      {isCustomer && (
-        <div className="ai-qa-section">
-          <h2>🤖 Ask Item Expert</h2>
-          <form onSubmit={handleAskQuestion} className="ai-form">
+      {user && user.role === 'Customer' && (
+        <div className="ai-chatbot-section">
+          <h2>🤖 Ask Product Expert</h2>
+          <form onSubmit={handleAskAI} className="ai-form">
             <input
               type="text"
-              placeholder="Ask a question about this product..."
               value={aiQuestion}
               onChange={(e) => setAiQuestion(e.target.value)}
+              placeholder="Ask anything about this product..."
               disabled={aiLoading}
             />
-            <button type="submit" disabled={aiLoading}>
-              {aiLoading ? 'Asking...' : 'Ask'}
+            <button type="submit" disabled={aiLoading || !aiQuestion.trim()}>
+              {aiLoading ? 'Asking...' : 'Ask AI'}
             </button>
           </form>
-
           {aiAnswer && (
             <div className="ai-answer">
-              <strong>Answer:</strong>
+              <strong>AI Expert:</strong>
               <p>{aiAnswer}</p>
             </div>
           )}
@@ -213,23 +253,25 @@ const ProductDetail = () => {
 
       <div className="reviews-section">
         <h2>Customer Reviews</h2>
-        {reviews.length === 0 ? (
-          <p>No reviews yet. Be the first to review!</p>
-        ) : (
+        {reviews.length > 0 ? (
           <div className="reviews-list">
             {reviews.map((review) => (
               <div key={review._id} className="review-card">
                 <div className="review-header">
-                  <strong>{review.user?.name || 'Anonymous'}</strong>
+                  <span className="reviewer-name">{review.user?.name}</span>
                   <span className="review-rating">
                     {'⭐'.repeat(review.rating)}
                   </span>
                 </div>
-                {review.comment && <p>{review.comment}</p>}
-                <small>{new Date(review.createdAt).toLocaleDateString()}</small>
+                <p className="review-comment">{review.comment}</p>
+                <span className="review-date">
+                  {new Date(review.createdAt).toLocaleDateString()}
+                </span>
               </div>
             ))}
           </div>
+        ) : (
+          <p>No reviews yet. Be the first to review!</p>
         )}
       </div>
     </div>
