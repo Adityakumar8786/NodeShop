@@ -1,91 +1,21 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import { loadStripe } from '@stripe/stripe-js';
-import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import useRazorpay from 'react-razorpay';
 import api from '../config/api';
 import './Cart.css';
-
-let stripePromise = null;
-
-const CheckoutForm = ({ amount, onSuccess, onError }) => {
-  const stripe = useStripe();
-  const elements = useElements();
-  const [processing, setProcessing] = useState(false);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!stripe || !elements) {
-      onError('Payment system not ready. Please wait...');
-      return;
-    }
-
-    setProcessing(true);
-
-    try {
-      const { data } = await api.post('/payment/create-payment-intent', { amount });
-
-      const { error: stripeError } = await stripe.confirmCardPayment(
-        data.clientSecret,
-        {
-          payment_method: {
-            card: elements.getElement(CardElement),
-          },
-        }
-      );
-
-      if (stripeError) {
-        onError(stripeError.message);
-        setProcessing(false);
-      } else {
-        onSuccess();
-      }
-    } catch (err) {
-      console.error('Payment error:', err);
-      onError(err.response?.data?.message || 'Payment failed. Please try again.');
-      setProcessing(false);
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="stripe-form">
-      <div className="card-element-wrapper">
-        <CardElement
-          options={{
-            style: {
-              base: {
-                fontSize: '16px',
-                color: '#424770',
-                '::placeholder': {
-                  color: '#aab7c4',
-                },
-              },
-            },
-          }}
-        />
-      </div>
-      <button type="submit" disabled={!stripe || processing} className="btn-pay">
-        {processing ? 'Processing...' : `Pay ₹${amount.toFixed(2)}`}
-      </button>
-      <p className="test-card-info">
-        <small>💳 Test Card: 4242 4242 4242 4242 | Expiry: 12/34 | CVC: 123</small>
-      </p>
-    </form>
-  );
-};
 
 const Cart = () => {
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
+  const [Razorpay] = useRazorpay();
   const [cart, setCart] = useState(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('COD');
   const [showCheckout, setShowCheckout] = useState(false);
-  const [showPayment, setShowPayment] = useState(false);
-  const [stripeReady, setStripeReady] = useState(false);
+  const [processing, setProcessing] = useState(false);
   
   const [address, setAddress] = useState({
     street: '',
@@ -108,23 +38,8 @@ const Cart = () => {
       setCart(response.data);
     } catch (error) {
       console.error('Error fetching cart:', error);
-      setError('Failed to load cart');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const initializeStripe = async () => {
-    if (stripePromise) return;
-    
-    try {
-      const { data } = await api.get('/payment/stripe-key'); // Use GET instead of POST
-      stripePromise = await loadStripe(data.publishableKey);
-      setStripeReady(true);
-      console.log('✅ Stripe loaded successfully');
-    } catch (error) {
-      console.error('❌ Stripe initialization error:', error);
-      setError('Payment system unavailable. Please contact support.');
     }
   };
 
@@ -134,6 +49,7 @@ const Cart = () => {
       setCart(response.data.cart);
     } catch (error) {
       setError(error.response?.data?.message || 'Failed to update cart');
+      setTimeout(() => setError(''), 3000);
     }
   };
 
@@ -143,6 +59,81 @@ const Cart = () => {
       setCart(response.data.cart);
     } catch (error) {
       setError(error.response?.data?.message || 'Failed to remove item');
+      setTimeout(() => setError(''), 3000);
+    }
+  };
+
+  const handleRazorpayPayment = async () => {
+    setProcessing(true);
+    
+    try {
+      const { data } = await api.post('/payment/create-order', { 
+        amount: cart.totalAmount 
+      });
+
+      const options = {
+        key: data.keyId,
+        amount: data.amount,
+        currency: data.currency,
+        name: 'NodeShop',
+        description: 'Order Payment',
+        order_id: data.orderId,
+        handler: async function (response) {
+          try {
+            const verifyResult = await api.post('/payment/verify-payment', {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            });
+
+            if (verifyResult.data.success) {
+              await api.post('/orders/create', {
+                paymentMethod: 'Prepaid',
+                shippingAddress: address,
+              });
+
+              setMessage('✅ Payment successful! Order placed.');
+              setShowCheckout(false);
+              setProcessing(false);
+              setTimeout(() => navigate('/my-orders'), 2000);
+            } else {
+              setError('❌ Payment verification failed');
+              setProcessing(false);
+            }
+          } catch (error) {
+            console.error('Payment verification error:', error);
+            setError('❌ Payment verification failed');
+            setProcessing(false);
+          }
+        },
+        prefill: {
+          name: user.name,
+          email: user.email,
+          contact: user.phone || '9999999999',
+        },
+        theme: {
+          color: '#4a9eff',
+        },
+        modal: {
+          ondismiss: function() {
+            setProcessing(false);
+          }
+        }
+      };
+
+      const rzp = new Razorpay(options);
+      
+      rzp.on('payment.failed', function (response) {
+        setError('❌ Payment failed. Please try again.');
+        setProcessing(false);
+        console.error('Payment failed:', response.error);
+      });
+
+      rzp.open();
+    } catch (error) {
+      console.error('Razorpay error:', error);
+      setError('❌ Payment initialization failed. Please check your payment gateway configuration.');
+      setProcessing(false);
     }
   };
 
@@ -167,36 +158,12 @@ const Cart = () => {
         setTimeout(() => navigate('/my-orders'), 2000);
       } catch (error) {
         setError(error.response?.data?.message || 'Checkout failed');
-        setTimeout(() => setError(''), 5000);
+        setTimeout(() => setError(''), 3000);
       }
     } else {
-      // Initialize Stripe and show payment form
       setShowCheckout(false);
-      await initializeStripe();
-      setShowPayment(true);
+      handleRazorpayPayment();
     }
-  };
-
-  const handlePaymentSuccess = async () => {
-    try {
-      await api.post('/orders/create', {
-        paymentMethod: 'Prepaid',
-        shippingAddress: address,
-      });
-      
-      setMessage('✅ Payment successful! Order placed.');
-      setShowPayment(false);
-      setTimeout(() => navigate('/my-orders'), 2000);
-    } catch (error) {
-      setError(error.response?.data?.message || 'Order creation failed');
-      setShowPayment(false);
-      setTimeout(() => setError(''), 5000);
-    }
-  };
-
-  const handlePaymentError = (errorMessage) => {
-    setError(errorMessage);
-    setTimeout(() => setError(''), 5000);
   };
 
   const safeToFixed = (value, decimals = 2) => {
@@ -353,44 +320,14 @@ const Cart = () => {
                     checked={paymentMethod === 'Prepaid'}
                     onChange={(e) => setPaymentMethod(e.target.value)}
                   />
-                  💳 Online Payment (Stripe)
+                  💳 Pay Online (Razorpay)
                 </label>
               </div>
 
-              <button type="submit" className="btn-submit">
-                {paymentMethod === 'COD' ? 'Place Order' : 'Continue to Payment'}
+              <button type="submit" className="btn-submit" disabled={processing}>
+                {processing ? 'Processing...' : (paymentMethod === 'COD' ? 'Place Order' : 'Continue to Payment')}
               </button>
             </form>
-          </div>
-        </div>
-      )}
-
-      {showPayment && (
-        <div className="modal">
-          <div className="modal-content">
-            <button className="modal-close" onClick={() => setShowPayment(false)}>
-              ×
-            </button>
-            <h2>💳 Payment Details</h2>
-            <p>Amount to pay: <strong>₹{safeToFixed(cart.totalAmount)}</strong></p>
-            
-            {!stripeReady ? (
-              <div className="loading-payment">
-                <p>Loading payment system...</p>
-              </div>
-            ) : stripePromise ? (
-              <Elements stripe={stripePromise}>
-                <CheckoutForm
-                  amount={cart.totalAmount}
-                  onSuccess={handlePaymentSuccess}
-                  onError={handlePaymentError}
-                />
-              </Elements>
-            ) : (
-              <div className="error-message">
-                Payment system unavailable. Please try COD or contact support.
-              </div>
-            )}
           </div>
         </div>
       )}
