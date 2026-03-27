@@ -23,38 +23,61 @@ const app = express();
 
 connectDB();
 
-// CRITICAL: CORS must allow credentials and match exact frontend URL
+// CRITICAL FIX: CORS Configuration
+const allowedOrigins = [
+  'https://nodeshop-2.onrender.com',
+  'http://localhost:5173'
+];
+
 app.use(
   cors({
-    origin: ['https://nodeshop-2.onrender.com', 'http://localhost:5173'],
+    origin: function(origin, callback) {
+      if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+    exposedHeaders: ['set-cookie'],
   })
 );
+
+// Handle preflight requests
+app.options('*', cors());
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// CRITICAL: Session settings for production HTTPS
+// CRITICAL FIX: Session Configuration
+app.set('trust proxy', 1); // Trust first proxy
+
 app.use(
   session({
-    secret: process.env.SESSION_SECRET,
+    secret: process.env.SESSION_SECRET || 'aditya_7864_secret_key',
     resave: false,
     saveUninitialized: false,
-    proxy: true, // IMPORTANT: Trust proxy for Render
     cookie: {
-      maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+      secure: true, // Must be true for HTTPS
       httpOnly: true,
-      secure: true, // MUST be true for HTTPS
-      sameSite: 'none', // CRITICAL: Required for cross-site cookies
-      domain: '.onrender.com', // IMPORTANT: Share cookies across Render subdomains
+      maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+      sameSite: 'none', // CRITICAL for cross-origin
+      path: '/', // Available on all paths
     },
   })
 );
 
 app.use(passport.initialize());
 app.use(passport.session());
+
+// Middleware to log session info (for debugging)
+app.use((req, res, next) => {
+  console.log('Session ID:', req.sessionID);
+  console.log('Authenticated:', req.isAuthenticated());
+  next();
+});
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -68,16 +91,20 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/payment', paymentRoutes);
 
-// Health check endpoint
+// Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date().toISOString() });
+  res.json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    env: process.env.NODE_ENV 
+  });
 });
 
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🌍 CORS origin: https://nodeshop-2.onrender.com`);
   console.log(`🔐 Secure cookies: true`);
   console.log(`🍪 SameSite: none`);
 });
