@@ -1,213 +1,110 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
-import bcrypt from 'bcryptjs';
+import cors from 'cors';
+import session from 'express-session';
 import passport from 'passport';
-import User from '../models/User.js';
-import { isAuthenticated } from '../middleware/auth.js';
+import connectDB from './config/database.js';
+import './config/passport.js';
 
-const router = express.Router();
+import authRoutes from './routes/authRoutes.js';
+import categoryRoutes from './routes/categoryRoutes.js';
+import productRoutes from './routes/productRoutes.js';
+import cartRoutes from './routes/cartRoutes.js';
+import orderRoutes from './routes/orderRoutes.js';
+import reviewRoutes from './routes/reviewRoutes.js';
+import deliveryRoutes from './routes/deliveryRoutes.js';
+import aiRoutes from './routes/aiRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
+import paymentRoutes from './routes/paymentRoutes.js';
 
-router.post('/register', async (req, res) => {
-  try {
-    const { name, email, password, phone, role, address } = req.body;
+const app = express();
 
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ message: 'Email already registered' });
-    }
+connectDB();
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+// CRITICAL FIX: CORS Configuration
+const allowedOrigins = [
+  'https://nodeshop-2.onrender.com',
+  'http://localhost:5173'
+];
 
-    const user = new User({
-      name,
-      email,
-      password: hashedPassword,
-      phone,
-      role: role || 'Customer',
-      address,
-    });
-
-    await user.save();
-
-    res.status(201).json({
-      message: 'Registration successful',
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      },
-    });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-});
-
-router.post('/login', (req, res, next) => {
-  console.log('📧 Login attempt:', req.body.email); // DEBUG LOG
-  
-  passport.authenticate('local', (err, user, info) => {
-    if (err) {
-      console.error('❌ Login error:', err); // DEBUG LOG
-      return res.status(500).json({ message: 'Server error', error: err.message });
-    }
-    if (!user) {
-      console.log('❌ Authentication failed:', info); // DEBUG LOG
-      return res.status(401).json({ message: info.message || 'Login failed' });
-    }
-
-    req.logIn(user, (err) => {
-      if (err) {
-        console.error('❌ Session error:', err); // DEBUG LOG
-        return res.status(500).json({ message: 'Login error', error: err.message });
+app.use(
+  cors({
+    origin: function(origin, callback) {
+      if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
       }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+    exposedHeaders: ['set-cookie'],
+  })
+);
 
-      console.log('✅ Login successful:', user.email); // DEBUG LOG
-      res.json({
-        message: 'Login successful',
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-        },
-      });
-    });
-  })(req, res, next);
+// Handle preflight requests
+app.options('*', cors());
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// CRITICAL FIX: Session Configuration
+app.set('trust proxy', 1); // Trust first proxy
+
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || 'aditya_7864_secret_key',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: true, // Must be true for HTTPS
+      httpOnly: true,
+      maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+      sameSite: 'none', // CRITICAL for cross-origin
+      path: '/', // Available on all paths
+    },
+  })
+);
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Middleware to log session info (for debugging)
+app.use((req, res, next) => {
+  console.log('Session ID:', req.sessionID);
+  console.log('Authenticated:', req.isAuthenticated());
+  next();
 });
 
-router.post('/logout', (req, res) => {
-  req.logout((err) => {
-    if (err) {
-      return res.status(500).json({ message: 'Logout error' });
-    }
-    req.session.destroy();
-    res.json({ message: 'Logout successful' });
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/cart', cartRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/reviews', reviewRoutes);
+app.use('/api/delivery', deliveryRoutes);
+app.use('/api/ai', aiRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/payment', paymentRoutes);
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    env: process.env.NODE_ENV 
   });
 });
 
-router.get('/me', (req, res) => {
-  if (req.isAuthenticated()) {
-    res.json({
-      user: {
-        id: req.user._id,
-        name: req.user.name,
-        email: req.user.email,
-        role: req.user.role,
-        phone: req.user.phone,
-        address: req.user.address,
-      },
-    });
-  } else {
-    res.status(401).json({ message: 'Not authenticated' });
-  }
+const PORT = process.env.PORT || 5000;
+
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🌍 CORS origin: https://nodeshop-2.onrender.com`);
+  console.log(`🔐 Secure cookies: true`);
+  console.log(`🍪 SameSite: none`);
 });
-
-router.put('/update-profile', isAuthenticated, async (req, res) => {
-  try {
-    const { name, phone, address } = req.body;
-
-    const user = await User.findById(req.user._id);
-    
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    if (name) user.name = name;
-    if (phone) user.phone = phone;
-    if (address) user.address = address;
-
-    await user.save();
-
-    res.json({ 
-      message: 'Profile updated successfully', 
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        address: user.address,
-      }
-    });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-});
-
-router.delete('/delete-account', isAuthenticated, async (req, res) => {
-  try {
-    await User.findByIdAndDelete(req.user._id);
-    req.logout((err) => {
-      if (err) {
-        return res.status(500).json({ message: 'Logout error' });
-      }
-      req.session.destroy();
-      res.json({ message: 'Account deleted successfully' });
-    });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-});
-
-router.put('/update-profile', isAuthenticated, async (req, res) => {
-  try {
-    const { name, phone, address } = req.body;
-
-    const user = await User.findById(req.user._id);
-    
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    if (name) user.name = name;
-    if (phone) user.phone = phone;
-    
-    
-    if (address) {
-      user.address = {
-        street: address.street || user.address?.street || '',
-        city: address.city || user.address?.city || '',
-        state: address.state || user.address?.state || '',
-        zipCode: address.zipCode || user.address?.zipCode || '',
-        country: address.country || user.address?.country || 'India',
-      };
-    }
-
-    await user.save();
-
-    res.json({ 
-      message: 'Profile updated successfully', 
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        address: user.address,
-      }
-    });
-  } catch (error) {
-    console.error('Update profile error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-});
-
-// Add this route for debugging
-router.get('/check-session', (req, res) => {
-  res.json({
-    isAuthenticated: req.isAuthenticated(),
-    sessionID: req.sessionID,
-    user: req.user ? {
-      id: req.user._id,
-      email: req.user.email,
-      role: req.user.role,
-    } : null,
-    cookies: req.headers.cookie,
-  });
-});
-
-
-
-
-
-export default router;
