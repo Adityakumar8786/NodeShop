@@ -192,4 +192,22 @@ router.put('/update-profile', isAuthenticated, async (req, res) => {
   }
 });
 
+// Add this route for debugging
+router.get('/check-session', (req, res) => {
+  res.json({
+    isAuthenticated: req.isAuthenticated(),
+    sessionID: req.sessionID,
+    user: req.user ? {
+      id: req.user._id,
+      email: req.user.email,
+      role: req.user.role,
+    } : null,
+    cookies: req.headers.cookie,
+  });
+});
+
+
+
+
+
 export default router;
