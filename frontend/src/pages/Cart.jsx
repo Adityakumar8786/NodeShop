@@ -26,18 +26,35 @@ const Cart = () => {
   });
 
   useEffect(() => {
+    // Check if user is logged in
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    // Check if user is customer
+    if (user.role !== 'Customer') {
+      setError('Only customers can access cart');
+      setLoading(false);
+      return;
+    }
+
     fetchCart();
     if (user?.address) {
       setAddress(user.address);
     }
-  }, []);
+  }, [user, navigate]);
 
   const fetchCart = async () => {
     try {
+      setLoading(true);
+      setError('');
       const response = await api.get('/cart');
+      console.log('Cart fetched:', response.data);
       setCart(response.data);
     } catch (error) {
       console.error('Error fetching cart:', error);
+      setError(error.response?.data?.message || 'Failed to load cart');
     } finally {
       setLoading(false);
     }
@@ -47,6 +64,8 @@ const Cart = () => {
     try {
       const response = await api.put('/cart/update', { productId, quantity });
       setCart(response.data.cart);
+      setMessage('✅ Cart updated');
+      setTimeout(() => setMessage(''), 2000);
     } catch (error) {
       setError(error.response?.data?.message || 'Failed to update cart');
       setTimeout(() => setError(''), 3000);
@@ -57,6 +76,8 @@ const Cart = () => {
     try {
       const response = await api.delete(`/cart/remove/${productId}`);
       setCart(response.data.cart);
+      setMessage('✅ Item removed');
+      setTimeout(() => setMessage(''), 2000);
     } catch (error) {
       setError(error.response?.data?.message || 'Failed to remove item');
       setTimeout(() => setError(''), 3000);
@@ -132,7 +153,7 @@ const Cart = () => {
       rzp.open();
     } catch (error) {
       console.error('Razorpay error:', error);
-      setError('❌ Payment initialization failed. Please check your payment gateway configuration.');
+      setError('❌ Payment initialization failed');
       setProcessing(false);
     }
   };
@@ -167,17 +188,31 @@ const Cart = () => {
   };
 
   const safeToFixed = (value, decimals = 2) => {
-    return value ? Number(value).toFixed(decimals) : '0.00';
+    const num = parseFloat(value);
+    return !isNaN(num) ? num.toFixed(decimals) : '0.00';
   };
 
   if (loading) {
     return <div className="loading">Loading cart...</div>;
   }
 
-  if (!cart || cart.items.length === 0) {
+  if (error && !cart) {
+    return (
+      <div className="error-page">
+        <h2>Cart Error</h2>
+        <p>{error}</p>
+        <button onClick={() => navigate('/')} className="btn-back">
+          ← Back to Home
+        </button>
+      </div>
+    );
+  }
+
+  if (!cart || !cart.items || cart.items.length === 0) {
     return (
       <div className="empty-cart">
         <h2>Your cart is empty</h2>
+        <p>Add some products to get started!</p>
         <button onClick={() => navigate('/')} className="btn-primary">
           Continue Shopping
         </button>
@@ -195,7 +230,13 @@ const Cart = () => {
         <div className="cart-items">
           {cart.items.map((item) => (
             <div key={item.product._id} className="cart-item">
-              <img src={item.product.image} alt={item.product.name} />
+              <img 
+                src={item.product.image || 'https://via.placeholder.com/100'} 
+                alt={item.product.name}
+                onError={(e) => {
+                  e.target.src = 'https://via.placeholder.com/100?text=No+Image';
+                }}
+              />
               <div className="cart-item-info">
                 <h3>{item.product.name}</h3>
                 <p className="cart-item-price">₹{safeToFixed(item.price)}</p>

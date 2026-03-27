@@ -56,12 +56,13 @@ const productSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-productSchema.pre('save', function() {
+productSchema.pre('save', function (next) {
   if (this.discount > 0) {
     this.finalPrice = this.price - (this.price * this.discount) / 100;
   } else {
     this.finalPrice = this.price;
   }
+  next();
 });
 
 export default mongoose.model('Product', productSchema);

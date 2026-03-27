@@ -30,6 +30,7 @@ const ProductDetail = () => {
       setLoading(true);
       setError('');
       const response = await api.get(`/products/${id}`);
+      console.log('Product fetched:', response.data);
       setProduct(response.data);
     } catch (error) {
       console.error('Error fetching product:', error);
@@ -121,7 +122,8 @@ const ProductDetail = () => {
   };
 
   const safeToFixed = (value, decimals = 2) => {
-    return value ? Number(value).toFixed(decimals) : '0.00';
+    const num = parseFloat(value);
+    return !isNaN(num) ? num.toFixed(decimals) : '0.00';
   };
 
   if (loading) {
@@ -146,9 +148,13 @@ const ProductDetail = () => {
 
       <div className="product-detail-container">
         <div className="product-image-section">
-          <img src={product.image} alt={product.name} onError={(e) => {
-            e.target.src = 'https://via.placeholder.com/500x500?text=No+Image';
-          }} />
+          <img 
+            src={product.image || 'https://via.placeholder.com/500x500?text=No+Image'} 
+            alt={product.name}
+            onError={(e) => {
+              e.target.src = 'https://via.placeholder.com/500x500?text=No+Image';
+            }}
+          />
         </div>
 
         <div className="product-info-section">
@@ -166,7 +172,7 @@ const ProductDetail = () => {
           <div className="product-price">
             {product.discount > 0 ? (
               <>
-                <span className="final-price">₹{safeToFixed(product.finalPrice)}</span>
+                <span className="final-price">₹{safeToFixed(product.finalPrice || product.price)}</span>
                 <span className="original-price">₹{safeToFixed(product.price)}</span>
                 <span className="discount-badge">{product.discount}% OFF</span>
               </>
@@ -181,7 +187,7 @@ const ProductDetail = () => {
 
           <div className="product-stock">
             <strong>Stock:</strong> 
-            {product.stock > 0 ? (
+            {(product.stock !== undefined && product.stock !== null && product.stock > 0) ? (
               <span className="in-stock"> {product.stock} units available</span>
             ) : (
               <span className="out-of-stock"> Out of Stock</span>
@@ -222,6 +228,12 @@ const ProductDetail = () => {
                   ⚡ Buy Now
                 </button>
               </div>
+            </div>
+          )}
+
+          {(!user || user.role !== 'Customer') && product.stock > 0 && (
+            <div className="login-prompt">
+              <p>Please <button onClick={() => navigate('/login')} className="link-btn">login as Customer</button> to purchase</p>
             </div>
           )}
         </div>

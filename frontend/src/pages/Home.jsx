@@ -102,12 +102,13 @@ const Home = () => {
                 </div>
 
                 <div className="product-stock">
-                  {product.stock > 0 ? (
-                    <span className="in-stock">In Stock</span>
-                  ) : (
-                    <span className="out-of-stock">Out of Stock</span>
-                  )}
-                </div>
+  {product.stock > 0 ? (
+    <span className="in-stock">In Stock</span>
+  ) : (
+    <span className="out-of-stock">Out of Stock</span>
+  )}
+</div>
+
               </div>
             </Link>
           ))}
