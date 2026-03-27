@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import useRazorpay from 'react-razorpay';
+import {useRazorpay} from 'react-razorpay';
 import api from '../config/api';
 import './Cart.css';
 
 const Cart = () => {
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
-  const [Razorpay] = useRazorpay();
+  const { Razorpay, isLoading} = useRazorpay();
   const [cart, setCart] = useState(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');

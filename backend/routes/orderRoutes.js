@@ -76,89 +76,6 @@ router.post('/create', isAuthenticated, isCustomer, async (req, res) => {
   }
 });
 
-router.put('/:id/deliver', isAuthenticated, isDelivery, async (req, res) => {
-  try {
-    console.log('🚚 Deliver route called for order ID:', req.params.id); // NEW LOG
-    console.log('📦 Request body:', req.body); // NEW LOG
-
-    const { cashReceived, deliveryOTP } = req.body;
-
-    const order = await Order.findById(req.params.id).populate('user', 'name phone'); // Use Order model
-    
-    if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
-    }
-
-    console.log('📋 Order status:', order.status); // NEW LOG
-    console.log('💳 Payment method:', order.paymentMethod); // NEW LOG
-    console.log('🔑 Existing deliveryOTP:', order.deliveryOTP ? 'YES' : 'NO'); // NEW LOG
-
-    if (!order.deliveryPerson || order.deliveryPerson.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: 'Not assigned to you' });
-    }
-
-    // Generate OTP on first delivery attempt for Prepaid orders
-    if (order.paymentMethod === 'Prepaid' && !order.deliveryOTP) {
-      console.log('Generating new OTP...'); // NEW LOG
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
-      order.deliveryOTP = otp;
-      await order.save();
-      
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log('📱 TWILIO SMS (MOCK - INTERVIEW DEMO)');
-      console.log(`To: ${order.user.phone}`);
-      console.log(`Customer: ${order.user.name}`);
-      console.log(`Order: ${order.orderNumber}`);
-      console.log(`Delivery OTP: ${otp}`);
-      console.log(`Message: "Your delivery verification OTP is ${otp}"`);
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      
-      return res.json({ 
-        requiresOTP: true,
-        message: 'OTP sent to customer. Please ask customer for OTP.',
-        mockOTP: otp // For demo purposes - remove in production
-      });
-    }
-
-    // Verify OTP for Prepaid orders
-    if (order.paymentMethod === 'Prepaid') {
-      if (!deliveryOTP) {
-        return res.status(400).json({ message: 'OTP required for prepaid orders' });
-      }
-      if (deliveryOTP !== order.deliveryOTP) {
-        return res.status(400).json({ message: 'Invalid OTP. Please ask customer for correct OTP.' });
-      }
-    }
-
-    // Verify cash received for COD orders
-    if (order.paymentMethod === 'COD' && !cashReceived) {
-      return res.status(400).json({ message: 'Please confirm cash received for COD orders' });
-    }
-
-    order.status = 'Delivered';
-    order.deliveredAt = new Date();
-    order.cashReceived = cashReceived || false;
-    order.deliveryOTP = null;
-    
-    if (order.paymentMethod === 'COD') {
-      order.paymentStatus = 'Paid';
-    }
-
-    await order.save();
-
-    console.log('✅ Order Delivered Successfully');
-    console.log(`Order: ${order.orderNumber}`);
-    if (order.paymentMethod === 'Prepaid') {
-      console.log(`OTP Verified: YES`);
-    }
-
-    res.json({ message: 'Order delivered successfully', order });
-  } catch (error) {
-    console.error('Deliver order error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-});
-
 router.get('/my-orders', isAuthenticated, isCustomer, async (req, res) => {
   try {
     const orders = await Order.find({ user: req.user._id })
@@ -283,9 +200,57 @@ router.get('/delivery/assigned', isAuthenticated, isDelivery, async (req, res) =
   }
 });
 
+// FIX: Generate OTP when marking "Out for Delivery"
 router.put('/:id/out-for-delivery', isAuthenticated, isDelivery, async (req, res) => {
   try {
-    const order = await Order.findById(req.params.id);
+    const order = await Order.findById(req.params.id).populate('user', 'name phone');
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    if (!order.deliveryPerson || order.deliveryPerson.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Not assigned to you' });
+    }
+
+    // IMPORTANT: Generate OTP for PREPAID orders when marking out for delivery
+    if (order.paymentMethod === 'Prepaid' && !order.deliveryOTP) {
+      const otp = generateOTP();
+      order.deliveryOTP = otp;
+
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('🔑 DELIVERY OTP GENERATED');
+      console.log(`Order ID: ${order._id}`);
+      console.log(`Order Number: ${order.orderNumber}`);
+      console.log(`Customer: ${order.user?.name}`);
+      console.log(`Customer Phone: ${order.user?.phone}`);
+      console.log(`Payment Method: ${order.paymentMethod}`);
+      console.log(`Generated OTP: ${otp}`);
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    }
+
+    order.status = 'Out for Delivery';
+    await order.save();
+
+    const updatedOrder = await Order.findById(order._id)
+      .populate('user', 'name phone')
+      .populate('deliveryPerson', 'name phone');
+
+    res.json({ 
+      message: 'Order marked as out for delivery', 
+      order: updatedOrder 
+    });
+  } catch (error) {
+    console.error('Out for delivery error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+router.put('/:id/deliver', isAuthenticated, isDelivery, async (req, res) => {
+  try {
+    const { cashReceived, deliveryOTP } = req.body;
+
+    const order = await Order.findById(req.params.id).populate('user', 'name phone');
     
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
@@ -295,12 +260,41 @@ router.put('/:id/out-for-delivery', isAuthenticated, isDelivery, async (req, res
       return res.status(403).json({ message: 'Not assigned to you' });
     }
 
-    order.status = 'Out for Delivery';
+    // For Prepaid orders - verify OTP
+    if (order.paymentMethod === 'Prepaid') {
+      if (!deliveryOTP) {
+        return res.status(400).json({ message: 'OTP required for prepaid orders' });
+      }
+      if (deliveryOTP !== order.deliveryOTP) {
+        return res.status(400).json({ message: 'Invalid OTP. Please check and try again.' });
+      }
+      console.log('✅ OTP Verified Successfully');
+    }
+
+    // For COD orders - verify cash received
+    if (order.paymentMethod === 'COD' && !cashReceived) {
+      return res.status(400).json({ message: 'Please confirm cash received for COD orders' });
+    }
+
+    // Mark as delivered
+    order.status = 'Delivered';
+    order.deliveredAt = new Date();
+    order.cashReceived = cashReceived || false;
+    order.deliveryOTP = null; // Clear OTP after successful delivery
+    
+    if (order.paymentMethod === 'COD') {
+      order.paymentStatus = 'Paid';
+    }
+
     await order.save();
 
-    res.json({ message: 'Order marked as out for delivery', order });
+    console.log('✅ Order Delivered Successfully');
+    console.log(`Order: ${order.orderNumber}`);
+    console.log(`Payment Method: ${order.paymentMethod}`);
+
+    res.json({ message: 'Order delivered successfully', order });
   } catch (error) {
-    console.error('Out for delivery error:', error);
+    console.error('Deliver order error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });

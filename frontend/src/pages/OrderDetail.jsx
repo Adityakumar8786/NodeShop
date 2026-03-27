@@ -20,6 +20,9 @@ const OrderDetail = () => {
 
   useEffect(() => {
     fetchOrder();
+    // Auto-refresh order every 5 seconds to get OTP updates
+    const interval = setInterval(fetchOrder, 5000);
+    return () => clearInterval(interval);
   }, [id]);
 
   useEffect(() => {
@@ -36,7 +39,9 @@ const OrderDetail = () => {
       setOrder(response.data);
     } catch (error) {
       console.error('Error fetching order:', error);
-      setMessage('Failed to load order');
+      if (loading) {
+        setMessage('Failed to load order');
+      }
     } finally {
       setLoading(false);
     }
@@ -125,7 +130,8 @@ const OrderDetail = () => {
   };
 
   const safeToFixed = (value, decimals = 2) => {
-    return value ? Number(value).toFixed(decimals) : '0.00';
+    const num = parseFloat(value);
+    return !isNaN(num) ? num.toFixed(decimals) : '0.00';
   };
 
   const getStatusColor = (status) => {
@@ -175,66 +181,113 @@ const OrderDetail = () => {
           </div>
         </div>
 
-        <div className="order-items-section">
-          <h3>Items</h3>
-          {order.items?.map((item, index) => (
-            <div key={index} className="order-item">
-              <img src={item.image} alt={item.name} />
-              <div className="item-info">
-                <h4>{item.name}</h4>
-                <p>Quantity: {item.quantity}</p>
-                <p className="item-price">₹{safeToFixed(item.price)}</p>
-              </div>
-              <div className="item-total">
-                ₹{safeToFixed(item.price * item.quantity)}
-              </div>
-              {order.status === 'Delivered' && user?.role === 'Customer' && (
-                <button
-                  className="btn-review"
-                  onClick={() => {
-                    setSelectedProduct(item);
-                    setShowReviewModal(true);
-                  }}
-                >
-                  ⭐ Rate
-                </button>
-              )}
+        {/* OTP DISPLAY SECTION - Customer View */}
+        {user?.role === 'Customer' && order.deliveryOTP && order.status === 'Out for Delivery' && (
+          <div className="otp-display-section">
+            <h3>🔑 Delivery OTP</h3>
+            <div className="otp-code">
+              {order.deliveryOTP}
             </div>
-          ))}
+            <p className="otp-instruction">
+              Share this OTP with the delivery person to confirm delivery
+            </p>
+          </div>
+        )}
+
+        {/* Waiting for OTP */}
+        {user?.role === 'Customer' && order.status === 'Out for Delivery' && !order.deliveryOTP && (
+          <div className="otp-waiting-section">
+            <p>⏳ Waiting for delivery OTP to be generated...</p>
+          </div>
+        )}
+
+        <div className="order-items-section">
+          <h3>Items Ordered</h3>
+          <div className="items-list">
+            {order.items?.map((item, index) => (
+              <div key={index} className="order-item">
+                <div className="item-image">
+                  <img 
+                    src={item.image || 'https://via.placeholder.com/80'} 
+                    alt={item.name}
+                    onError={(e) => {
+                      e.target.src = 'https://via.placeholder.com/80?text=No+Image';
+                    }}
+                  />
+                </div>
+                <div className="item-details">
+                  <h4>{item.name}</h4>
+                  <p className="item-quantity">Qty: {item.quantity}</p>
+                  <p className="item-price">₹{safeToFixed(item.price)} each</p>
+                </div>
+                <div className="item-total">
+                  <p className="total-label">Total</p>
+                  <p className="total-amount">₹{safeToFixed(item.price * item.quantity)}</p>
+                </div>
+                {order.status === 'Delivered' && user?.role === 'Customer' && (
+                  <button
+                    className="btn-review"
+                    onClick={() => {
+                      setSelectedProduct(item);
+                      setShowReviewModal(true);
+                    }}
+                  >
+                    ⭐ Rate Product
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className="order-info-grid">
-          <div className="info-section">
-            <h3>Delivery Address</h3>
+          <div className="info-card">
+            <h3>📍 Delivery Address</h3>
             {order.shippingAddress ? (
-              <>
+              <div className="address-details">
                 <p>{order.shippingAddress.street}</p>
                 <p>{order.shippingAddress.city}, {order.shippingAddress.state}</p>
                 <p>{order.shippingAddress.zipCode}</p>
-              </>
+                <p>{order.shippingAddress.country}</p>
+              </div>
             ) : (
-              <p>No address</p>
+              <p>No address provided</p>
             )}
           </div>
 
-          <div className="info-section">
-            <h3>Payment</h3>
-            <p><strong>Method:</strong> {order.paymentMethod}</p>
-            <p><strong>Status:</strong> {order.paymentStatus}</p>
-            <p><strong>Total:</strong> ₹{safeToFixed(order.totalAmount)}</p>
+          <div className="info-card">
+            <h3>💳 Payment Information</h3>
+            <div className="payment-details">
+              <div className="detail-row">
+                <span>Method:</span>
+                <strong>{order.paymentMethod}</strong>
+              </div>
+              <div className="detail-row">
+                <span>Status:</span>
+                <strong className={order.paymentStatus === 'Paid' ? 'status-paid' : 'status-pending'}>
+                  {order.paymentStatus}
+                </strong>
+              </div>
+              <div className="detail-row total-row">
+                <span>Total Amount:</span>
+                <strong className="total-amount">₹{safeToFixed(order.totalAmount)}</strong>
+              </div>
+            </div>
           </div>
         </div>
 
         {order.status === 'Out for Delivery' && (
           <div className="map-section">
-            <h3>📍 Track Delivery</h3>
-            <div id="map" style={{ width: '100%', height: '400px', borderRadius: '8px' }}></div>
+            <h3>📍 Track Your Delivery</h3>
+            <div id="map" className="delivery-map"></div>
             {deliveryLocation && (
               <div className="location-info">
-                <p>🚚 {deliveryLocation.deliveryPerson?.name}</p>
-                <p>📞 {deliveryLocation.deliveryPerson?.phone}</p>
+                <div className="delivery-person-info">
+                  <p><strong>🚚 Delivery Person:</strong> {deliveryLocation.deliveryPerson?.name}</p>
+                  <p><strong>📞 Contact:</strong> {deliveryLocation.deliveryPerson?.phone}</p>
+                </div>
                 <p className="update-time">
-                  Updated: {new Date(deliveryLocation.updatedAt).toLocaleTimeString()}
+                  Last updated: {new Date(deliveryLocation.updatedAt).toLocaleTimeString()}
                 </p>
               </div>
             )}
